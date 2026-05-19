@@ -1,0 +1,35 @@
+{
+  "name": "dragon-ai-assistant",
+  "version": "1.0.0",
+  "description": "Dragon AI Assistant - Your Desktop Automation Companion",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder"
+  },
+  "author": "rifat1122ddf-commits",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "dependencies": {
+    "node-fetch": "^2.7.0",
+    "robotjs": "^0.6.0"
+  },
+  "build": {
+    "appId": "com.rifat.dragonassistant",
+    "productName": "Dragon AI Assistant",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "assets/dragon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}
