@@ -8,7 +8,7 @@ class UI {
     this.inputField = null;
     this.typingIndicator = null;
     this.confirmModal = null;
-    this.modalOverlay = null;        // ✅ ঠিক করা হলো
+    this.modalOverlay = null;
     this.pendingResolve = null;
   }
 
@@ -256,7 +256,7 @@ class UI {
     this.chatContainer = document.getElementById('messagesArea');
     this.inputField = document.getElementById('userInput');
     this.typingIndicator = document.getElementById('typingIndicator');
-    this.modalOverlay = document.getElementById('securityModal');   // ✅ অ্যাসাইন করা হলো
+    this.modalOverlay = document.getElementById('securityModal');
 
     document.getElementById('sendBtn').onclick = () => this.sendMessage();
     document.getElementById('micBtn').onclick = () => this.startSpeechRecognition();
@@ -277,13 +277,33 @@ class UI {
     engine.submitUserCommand(text);
   }
 
+  // ================= টেক্সট-টু-স্পিচ ফাংশন =================
+  speakText(text) {
+    if (!window.speechSynthesis) {
+      console.warn("Text-to-Speech not supported");
+      return;
+    }
+    window.speechSynthesis.cancel(); // আগের কথা বলা বন্ধ করে দেয়
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'bn-BD';   // বাংলা ভাষা সেট
+    utterance.rate = 0.9;       // গতি (1 = স্বাভাবিক)
+    utterance.pitch = 1;
+    window.speechSynthesis.speak(utterance);
+  }
+
   addMessage(text, sender) {
     const msgDiv = document.createElement('div');
     msgDiv.className = `message ${sender}-message`;
     msgDiv.innerText = text;
     this.chatContainer.appendChild(msgDiv);
     msgDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    
+    // এআই-এর উত্তর হলে তা পড়ে শোনাবে
+    if (sender === 'ai') {
+      this.speakText(text);
+    }
   }
+  // =======================================================
 
   showTyping(show) {
     this.typingIndicator.style.display = show ? 'flex' : 'none';
@@ -301,7 +321,6 @@ class UI {
     this.addMessage(`সিস্টেম তথ্য:\nপ্ল্যাটফর্ম: ${info.platform}\nআর্কিটেকচার: ${info.arch}\nNode সংস্করণ: ${info.nodeVersion}`, 'system');
   }
 
-  // ✅ সঠিকভাবে কনফার্মেশন মডাল হ্যান্ডলিং
   requestActionConfirmation(actionDetails) {
     return new Promise((resolve) => {
       const modalActionText = document.getElementById('modalActionText');
