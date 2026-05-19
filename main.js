@@ -3,7 +3,6 @@ const { app, BrowserWindow, ipcMain, dialog, Tray, Menu } = require('electron');
 const { exec } = require('child_process');
 const path = require('path');
 const robot = require('robotjs');
-
 let mainWindow;
 let tray = null;
 
@@ -27,7 +26,7 @@ function createWindow() {
 
   mainWindow.on('closed', () => { mainWindow = null; });
   
-  // উইন্ডো বন্ধ করলে ট্রেতে চলে যাবে
+  // 👇 এই অংশটি যোগ করুন (উইন্ডো বন্ধ করলে ট্রেতে চলে যাবে)
   mainWindow.on('close', (event) => {
     if (!app.isQuitting) {
       event.preventDefault();
@@ -54,7 +53,7 @@ app.whenReady().then(() => {
   createWindow();
   createTray();
   
-  // অটো-স্টার্ট সক্রিয়
+  // 👇 এই অংশটি যোগ করুন (ল্যাপটপ চালু হলে অ্যাপ চালু হবে)
   app.setLoginItemSettings({
     openAtLogin: true,
     path: process.execPath
@@ -63,9 +62,7 @@ app.whenReady().then(() => {
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
 });
 
-app.on('window-all-closed', () => { 
-  if (process.platform !== 'darwin') app.quit(); 
-});
+app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
 
 // ---------- IPC Handlers ----------
 ipcMain.handle('run-shell', async (event, command) => {
@@ -119,7 +116,4 @@ ipcMain.handle('confirm-action', async (event, actionDetails) => {
 });
 
 ipcMain.on('window-minimize', () => { mainWindow.minimize(); });
-ipcMain.on('window-close', () => { 
-  app.isQuitting = true; 
-  mainWindow.close(); 
-});
+ipcMain.on('window-close', () => { app.isQuitting = true; mainWindow.close(); });
