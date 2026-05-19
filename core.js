@@ -6,6 +6,20 @@ const { api } = require('./api.js');
 const { modules } = require('./modules.js');
 const { ui } = require('./ui.js');
 
+// ==========================================
+// নতুন ১০টি আল্ট্রা-পাওয়ারফুল মডিউল রিকোয়ার (Require)
+// ==========================================
+const { vision } = require('./vision.js');
+const { memory } = require('./memory.js');
+const { macroEngine } = require('./keyboard_macro.js');
+const { windowManager } = require('./window_manager.js');
+const { fileIndexer } = require('./file_indexer.js');
+const { scheduler } = require('./scheduler.js');
+const { guardDog } = require('./guarddog.js');
+const { telemetry } = require('./telemetry.js');
+const { updater } = require('./updater.js');
+const { proxyRouter } = require('./proxy_router.js');
+
 class Core {
   constructor() {
     this.initialized = false;
@@ -28,6 +42,46 @@ class Core {
       save: (title, content) => modules.saveNote(title, content),
       getAll: () => modules.getAllNotes()
     });
+
+    // ==========================================
+    // নতুন ১০টি মডিউল অ্যাক্টিভেশন ও ইনিশিয়ালাইজেশন
+    // ==========================================
+    try {
+      // ১. ম্যাক্রো ইঞ্জিন রেজিস্টার
+      if (macroEngine && typeof macroEngine.register === 'function') {
+        macroEngine.register();
+      }
+      
+      // ২. গার্ডডগ সিকিউরিটি ফায়ারওয়াল ইনস্টল
+      if (guardDog && typeof guardDog.installInterceptor === 'function') {
+        guardDog.installInterceptor();
+      }
+      
+      // ৩. রিয়েল-টাইম পিসি র‍্যাম/সিপিইউ মনিটরিং স্টার্ট
+      if (telemetry && typeof telemetry.startMonitoring === 'function') {
+        telemetry.startMonitoring();
+      }
+      
+      // ৪. ব্যাকগ্রাউন্ড শিডিউলার ওয়াচার রান
+      if (scheduler && typeof scheduler.startWatcher === 'function') {
+        scheduler.startWatcher();
+      }
+      
+      // ৫. ব্যাকগ্রাউন্ড ফাইল ইনডেক্সিং শুরু (এরর হ্যান্ডলিং সহ)
+      if (fileIndexer && typeof fileIndexer.startFullIndex === 'function') {
+        fileIndexer.startFullIndex().catch(err => console.error("File Indexer Error:", err));
+      }
+      
+      // ৬. ওয়ান-টাইম কোড সেলফ-হিলিং এবং প্যাচার রান
+      if (updater && typeof updater.runSelfHealing === 'function') {
+        updater.runSelfHealing().catch(err => console.error("Self-Healing Error:", err));
+      }
+      
+      console.log('⚡ All 10 Advanced Subsystems Linked Successfully.');
+    } catch (subsystemError) {
+      console.error('Subsystem loading warning:', subsystemError.message);
+    }
+    // ==========================================
     
     // Start listening to engine events
     events.on('engine:command-request', async (userInput) => {
@@ -49,9 +103,9 @@ class Core {
           const confirmed = await ui.requestActionConfirmation(action.raw);
           if (confirmed) {
             await engine.executeAction(action);
-            ui.addMessage(`✅ এক্সিকিউট করা হয়েছে: ${action.type}`, 'system');
+            ui.addMessage(`✅ এক্সিকিউট করা হয়েছে: ${action.type}`, 'system');
           } else {
-            ui.addMessage(`❌ বাতিল করা হয়েছে: ${action.type}`, 'system');
+            ui.addMessage(`❌ বাতিল করা হয়েছে: ${action.type}`, 'system');
           }
         }
       }
