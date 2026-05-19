@@ -1,4 +1,5 @@
 // proxy_router.js
+const fetch = require('node-fetch');   // ✅ যোগ করো
 const { events } = require('./events.js');
 
 class ProxyRouter {
@@ -22,13 +23,12 @@ class ProxyRouter {
         });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const html = await response.text();
-        // Simple sanitizer: remove script and style tags
         const sanitized = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
                               .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
-                              .replace(/<[^>]+>/g, ' ') // remove all tags
+                              .replace(/<[^>]+>/g, ' ')
                               .replace(/\s+/g, ' ')
                               .trim();
-        return { success: true, content: sanitized.slice(0, 5000) }; // limit length
+        return { success: true, content: sanitized.slice(0, 5000) };
       } catch (err) {
         if (i === retries - 1) return { success: false, error: err.message };
         await new Promise(resolve => setTimeout(resolve, delay));
