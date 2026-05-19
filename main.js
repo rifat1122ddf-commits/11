@@ -1,10 +1,11 @@
 // main.js
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, Tray, Menu } = require('electron');
 const { exec } = require('child_process');
 const path = require('path');
-const robot = require('robotjs');  // ✅ const যোগ করা হয়েছে
+const robot = require('robotjs');
 
 let mainWindow;
+let tray = null;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -25,14 +26,46 @@ function createWindow() {
   mainWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(uiHTML)}`);
 
   mainWindow.on('closed', () => { mainWindow = null; });
+  
+  // উইন্ডো বন্ধ করলে ট্রেতে চলে যাবে
+  mainWindow.on('close', (event) => {
+    if (!app.isQuitting) {
+      event.preventDefault();
+      mainWindow.hide();
+    }
+    return false;
+  });
+}
+
+function createTray() {
+  // একটি ট্রে আইকন ফাইল তৈরি করুন (assets/tray-icon.png) অথবা পথ ঠিক করুন
+  const iconPath = path.join(__dirname, 'assets', 'tray-icon.png');
+  tray = new Tray(iconPath);
+  const contextMenu = Menu.buildFromTemplate([
+    { label: 'শো', click: () => { mainWindow.show(); } },
+    { label: 'বন্ধ', click: () => { app.isQuitting = true; app.quit(); } }
+  ]);
+  tray.setToolTip('Dragon AI Assistant');
+  tray.setContextMenu(contextMenu);
+  tray.on('click', () => { mainWindow.show(); });
 }
 
 app.whenReady().then(() => {
   createWindow();
+  createTray();
+  
+  // অটো-স্টার্ট সক্রিয়
+  app.setLoginItemSettings({
+    openAtLogin: true,
+    path: process.execPath
+  });
+  
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
 });
 
-app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
+app.on('window-all-closed', () => { 
+  if (process.platform !== 'darwin') app.quit(); 
+});
 
 // ---------- IPC Handlers ----------
 ipcMain.handle('run-shell', async (event, command) => {
@@ -86,4 +119,7 @@ ipcMain.handle('confirm-action', async (event, actionDetails) => {
 });
 
 ipcMain.on('window-minimize', () => { mainWindow.minimize(); });
-ipcMain.on('window-close', () => { mainWindow.close(); });
+ipcMain.on('window-close', () => { 
+  app.isQuitting = true; 
+  mainWindow.close(); 
+});
