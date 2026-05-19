@@ -285,8 +285,8 @@ class UI {
     }
     window.speechSynthesis.cancel(); // আগের কথা বলা বন্ধ করে দেয়
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'bn-BD';   // বাংলা ভাষা সেট
-    utterance.rate = 0.9;       // গতি (1 = স্বাভাবিক)
+    utterance.lang = 'bn-BD'; // বাংলা ভাষা সেট
+    utterance.rate = 0.9; // গতি (1 = স্বাভাবিক)
     utterance.pitch = 1;
     window.speechSynthesis.speak(utterance);
   }
@@ -297,7 +297,6 @@ class UI {
     msgDiv.innerText = text;
     this.chatContainer.appendChild(msgDiv);
     msgDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
-    
     // এআই-এর উত্তর হলে তা পড়ে শোনাবে
     if (sender === 'ai') {
       this.speakText(text);
