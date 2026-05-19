@@ -11,7 +11,7 @@ class HybridAPI {
     
     // Local Ollama config
     this.ollamaEndpoint = 'http://localhost:11434/api/generate';
-    this.ollamaModel = 'deepseek-r1:7b';  // তোমার ডাউনলোড করা মডেলের নাম দিন
+    this.ollamaModel = 'deepseek-r1:5b';  // তোমার ডাউনলোড করা মডেলের নাম দিন
     
     // টাইমআউট সেটিং (মিলিসেকেন্ড)
     this.timeout = 30000; // 30 সেকেন্ড
