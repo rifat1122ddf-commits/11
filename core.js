@@ -81,6 +81,13 @@ class Core {
     } catch (subsystemError) {
       console.error('Subsystem loading warning:', subsystemError.message);
     }
+
+    // ==========================================
+    // তিনটি কনসোল লগ – মডিউল ঠিকমতো লোড হয়েছে কিনা দেখার জন্য
+    // ==========================================
+    console.log('Vision module ready:', !!vision);
+    console.log('WindowManager ready:', !!windowManager);
+    console.log('ProxyRouter ready:', !!proxyRouter);
     // ==========================================
     
     // Start listening to engine events
