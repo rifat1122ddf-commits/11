@@ -1,74 +1,128 @@
-// api.js
-const fetch = require('node-fetch');   // ✅ যোগ করো (npm install node-fetch)
+// api.js - Gemini + Local DeepSeek (Ollama) Fallback System
+const fetch = require('node-fetch');
 const { events } = require('./events.js');
-const { memory } = require('./memory.js');   // লং-টার্ম মেমরি যোগ
+const { memory } = require('./memory.js');
 
-class GeminiAPI {
+class HybridAPI {
   constructor() {
-    this.apiKey = 'AIzaSyD9Th2laiRCvE5z7QbA62e4CZxopudtPCw';
-    this.endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent';
+    // Gemini config
+    this.geminiApiKey = 'AIzaSyD9Th2laiRCvE5z7QbA62e4CZxopudtPCw';
+    this.geminiEndpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent';
+    
+    // Local Ollama config
+    this.ollamaEndpoint = 'http://localhost:11434/api/generate';
+    this.ollamaModel = 'deepseek-r1:7b';  // তোমার ডাউনলোড করা মডেলের নাম দিন
+    
+    // টাইমআউট সেটিং (মিলিসেকেন্ড)
+    this.timeout = 30000; // 30 সেকেন্ড
   }
 
-  async sendToGemini(userPrompt) {
-    // মেমরি থেকে প্রাসঙ্গিক তথ্য যোগ করো
-    const context = memory.getContextForPrompt(userPrompt);
-    
-    const systemInstruction = `
-You are Dragon AI Assistant, a desktop automation agent. You must respond in Bengali or English as the user speaks.
-When you need to perform a system action, embed a token exactly in this format: [SYS_ACT:TYPE:PARAMS]
-Available types:
-- MOUSE_MOVE:x,y   (x and y as numbers)
-- MOUSE_CLICK:left or right
-- KEYBOARD_TYPE:text_to_type
-- RUN_SHELL:command (any shell command)
-Do NOT use any other formatting. You may combine multiple tokens. After the action, explain what you did.
-Always ask for confirmation in natural language before dangerous actions, but the token will trigger the confirmation UI.
-Today's date: ${new Date().toLocaleString()}
-${context}
-    `;
-    
+  // জেমিনিতে কল করার ফাংশন
+  async callGemini(prompt, systemInstruction, context) {
+    const fullPrompt = `${systemInstruction}\n${context}\nUser: ${prompt}`;
     const requestBody = {
-      contents: [
-        {
-          parts: [
-            { text: systemInstruction },
-            { text: userPrompt }
-          ]
-        }
-      ],
-      generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 1000,
-      }
+      contents: [{ parts: [{ text: fullPrompt }] }],
+      generationConfig: { temperature: 0.7, maxOutputTokens: 1000 }
     };
-    
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), this.timeout);
+
     try {
-      const response = await fetch(`${this.endpoint}?key=${this.apiKey}`, {
+      const response = await fetch(`${this.geminiEndpoint}?key=${this.geminiApiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody)
+        body: JSON.stringify(requestBody),
+        signal: controller.signal
       });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Gemini API error: ${response.status} ${errorText}`);
-      }
-      
+      clearTimeout(timeoutId);
+
+      if (!response.ok) throw new Error(`Gemini HTTP ${response.status}`);
       const data = await response.json();
       const aiText = data.candidates[0].content.parts[0].text;
-      events.emit('api:response', aiText);
-      
-      // মেমরিতে সংরক্ষণ করো
-      await memory.remember(userPrompt, 'user_query');
-      await memory.remember(aiText, 'ai_response');
-      
-      return aiText;
+      return { success: true, text: aiText, source: 'gemini' };
     } catch (err) {
-      events.emit('api:error', err.message);
-      return `দুঃখিত, একটি ত্রুটি ঘটেছে: ${err.message}`;
+      clearTimeout(timeoutId);
+      return { success: false, error: err.message, source: 'gemini' };
+    }
+  }
+
+  // লোকাল ওলামা (DeepSeek) কল করার ফাংশন
+  async callOllama(prompt, systemInstruction, context) {
+    const fullPrompt = `System: ${systemInstruction}\n\n${context}\nUser: ${prompt}`;
+    const requestBody = {
+      model: this.ollamaModel,
+      prompt: fullPrompt,
+      stream: false,
+      options: { temperature: 0.7, max_tokens: 1000 }
+    };
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), this.timeout);
+
+    try {
+      const response = await fetch(this.ollamaEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody),
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+
+      if (!response.ok) throw new Error(`Ollama HTTP ${response.status}`);
+      const data = await response.json();
+      const aiText = data.response;
+      return { success: true, text: aiText, source: 'ollama' };
+    } catch (err) {
+      clearTimeout(timeoutId);
+      return { success: false, error: err.message, source: 'ollama' };
+    }
+  }
+
+  // মেইন ফাংশন – আগে জেমিনি, ব্যর্থ হলে ওলামা
+  async sendToGemini(userPrompt) {
+    // কনটেক্সট ও সিস্টেম ইন্সট্রাকশন তৈরি
+    const context = memory.getContextForPrompt(userPrompt);
+    const systemInstruction = `
+You are Dragon AI Assistant, a desktop automation agent. Respond in Bengali or English.
+When you need to perform a system action, embed a token exactly in this format: [SYS_ACT:TYPE:PARAMS]
+Available types: MOUSE_MOVE:x,y, MOUSE_CLICK:left/right, KEYBOARD_TYPE:text, RUN_SHELL:command.
+Do NOT use any other formatting. After the action, explain what you did.
+Today's date: ${new Date().toLocaleString()}
+    `;
+
+    // ১. জেমিনি চেষ্টা
+    events.emit('api:attempt', 'gemini');
+    let result = await this.callGemini(userPrompt, systemInstruction, context);
+    
+    // ২. জেমিনি সফল হলে সেটাই রিটার্ন
+    if (result.success) {
+      events.emit('api:response', { source: 'gemini', text: result.text });
+      await memory.remember(userPrompt, 'user_query');
+      await memory.remember(result.text, 'ai_response');
+      return result.text;
+    }
+
+    // ৩. জেমিনি ব্যর্থ – লগ করে ওলামা চেষ্টা
+    events.emit('api:fallback', { from: 'gemini', error: result.error });
+    console.warn(`Gemini failed: ${result.error}. Falling back to Ollama (${this.ollamaModel})`);
+    
+    // ৪. ওলামা কল
+    const fallbackResult = await this.callOllama(userPrompt, systemInstruction, context);
+    
+    if (fallbackResult.success) {
+      events.emit('api:response', { source: 'ollama', text: fallbackResult.text });
+      await memory.remember(userPrompt, 'user_query');
+      await memory.remember(fallbackResult.text, 'ai_response');
+      return fallbackResult.text;
+    } else {
+      // দুই জায়গাই ব্যর্থ – ইউজারকে জানাও
+      const errorMsg = `⚠️ কোন এআই মডেল সাড়া দিচ্ছে না।\nজেমিনি ত্রুটি: ${result.error}\nওলামা ত্রুটি: ${fallbackResult.error}\n\nদয়া করে নেটওয়ার্ক চেক করুন অথবা নিশ্চিত করুন যে \`ollama serve\` চালু আছে।`;
+      events.emit('api:error', errorMsg);
+      return errorMsg;
     }
   }
 }
 
-const api = new GeminiAPI();
+const api = new HybridAPI();
 module.exports = { api };
