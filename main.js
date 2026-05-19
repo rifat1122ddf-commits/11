@@ -2,7 +2,7 @@
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const { exec } = require('child_process');
 const path = require('path');
-const robot = require('robotjs');
+const robot = require('robotjs');  // ✅ const যোগ করা হয়েছে
 
 let mainWindow;
 
@@ -18,10 +18,9 @@ function createWindow() {
       contextIsolation: false,
       enableRemoteModule: true,
     },
-    icon: path.join(__dirname, 'assets', 'dragon.png'), // optional
+    icon: path.join(__dirname, 'assets', 'dragon.png'),
   });
 
-  // Load the UI from ui.js (we'll serve a data URL or inline)
   const uiHTML = require('./ui.js').getUIHTML();
   mainWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(uiHTML)}`);
 
@@ -35,7 +34,7 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
 
-// ---------- IPC Handlers for Secure System Automation ----------
+// ---------- IPC Handlers ----------
 ipcMain.handle('run-shell', async (event, command) => {
   return new Promise((resolve, reject) => {
     exec(command, (error, stdout, stderr) => {
@@ -72,7 +71,6 @@ ipcMain.handle('keyboard-type', (event, text) => {
   }
 });
 
-// Show confirmation dialog from main process
 ipcMain.handle('confirm-action', async (event, actionDetails) => {
   const result = await dialog.showMessageBox(mainWindow, {
     type: 'warning',
@@ -84,9 +82,8 @@ ipcMain.handle('confirm-action', async (event, actionDetails) => {
     cancelId: 0,
     noLink: true,
   });
-  return result.response === 1; // true if YES clicked
+  return result.response === 1;
 });
 
-// Window controls
 ipcMain.on('window-minimize', () => { mainWindow.minimize(); });
 ipcMain.on('window-close', () => { mainWindow.close(); });
