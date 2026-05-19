@@ -1,13 +1,18 @@
 // api.js
+const fetch = require('node-fetch');   // ✅ যোগ করো (npm install node-fetch)
 const { events } = require('./events.js');
+const { memory } = require('./memory.js');   // লং-টার্ম মেমরি যোগ
 
 class GeminiAPI {
   constructor() {
     this.apiKey = 'AIzaSyD9Th2laiRCvE5z7QbA62e4CZxopudtPCw';
     this.endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent';
   }
-  
+
   async sendToGemini(userPrompt) {
+    // মেমরি থেকে প্রাসঙ্গিক তথ্য যোগ করো
+    const context = memory.getContextForPrompt(userPrompt);
+    
     const systemInstruction = `
 You are Dragon AI Assistant, a desktop automation agent. You must respond in Bengali or English as the user speaks.
 When you need to perform a system action, embed a token exactly in this format: [SYS_ACT:TYPE:PARAMS]
@@ -19,6 +24,7 @@ Available types:
 Do NOT use any other formatting. You may combine multiple tokens. After the action, explain what you did.
 Always ask for confirmation in natural language before dangerous actions, but the token will trigger the confirmation UI.
 Today's date: ${new Date().toLocaleString()}
+${context}
     `;
     
     const requestBody = {
@@ -51,6 +57,11 @@ Today's date: ${new Date().toLocaleString()}
       const data = await response.json();
       const aiText = data.candidates[0].content.parts[0].text;
       events.emit('api:response', aiText);
+      
+      // মেমরিতে সংরক্ষণ করো
+      await memory.remember(userPrompt, 'user_query');
+      await memory.remember(aiText, 'ai_response');
+      
       return aiText;
     } catch (err) {
       events.emit('api:error', err.message);
